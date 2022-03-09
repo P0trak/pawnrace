@@ -1,6 +1,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
+using UnityEngine.Events;
 using UnityEditor;
 using System.IO;
 using UnityEngine.SceneManagement;
@@ -16,7 +19,27 @@ public class Menu : MonoBehaviour
 
     bool isPlayerWhite;
 
+    int maxTreeDepth = 3;
+
+    string plural = "parallel universes ahead of you.";
+    string singular = "parallel universe ahead of you.";
+
+    public TextMeshProUGUI difficulty;
+
+    public TextMeshProUGUI pus;
+
     public GameObject goButton;
+
+    public Button easier;
+    public Button harder;
+
+    void Awake()
+    {
+        Debug.Log(maxTreeDepth);
+        easier.onClick.AddListener(DecreaseDifficulty);
+        harder.onClick.AddListener(IncreaseDifficulty);
+        difficulty.text = maxTreeDepth.ToString();
+    }
 
     public void setAgainstAI(bool vsAI)
     {
@@ -52,6 +75,45 @@ public class Menu : MonoBehaviour
         whiteGap = "";
         blackGap = "";
         goButton.SetActive(false);
+    }
+
+    public void IncreaseDifficulty()
+    {
+        maxTreeDepth++;
+        Debug.Log(maxTreeDepth);
+        if (maxTreeDepth >= 5)
+        {
+            harder.interactable = false;
+        }
+        if (maxTreeDepth > 1)
+        {
+           easier.interactable = true; 
+        }
+
+        SetDiffText();
+        
+    }
+
+    public void DecreaseDifficulty()
+    {
+        maxTreeDepth--;
+        Debug.Log(maxTreeDepth);
+        if (maxTreeDepth <= 1)
+        {
+            easier.interactable = false;
+        }
+        if (maxTreeDepth < 5)
+        {
+            harder.interactable = true;
+        }
+
+        SetDiffText();
+    }
+
+    void SetDiffText()
+    {
+        difficulty.text = maxTreeDepth.ToString();
+        pus.text = maxTreeDepth == 1 ? singular : plural;
     }
 
 
@@ -91,6 +153,7 @@ public class Menu : MonoBehaviour
         if (vsAI)
         {
             PlayerPrefs.SetInt("isPlayerWhite", isPlayerWhite ? 1 : 0);
+            PlayerPrefs.SetInt("maxTreeDepth", maxTreeDepth);
         }
         
         PlayerPrefs.Save();
@@ -110,6 +173,7 @@ public class Menu : MonoBehaviour
         PlayerPrefs.SetInt("vsAI", vsAI ? 1 : 0);
         PlayerPrefs.SetString("whiteGap", whiteGap);
         PlayerPrefs.SetString("blackGap", blackGap);
+        PlayerPrefs.SetInt("maxTreeDepth", maxTreeDepth);
         PlayerPrefs.Save();
     }
 

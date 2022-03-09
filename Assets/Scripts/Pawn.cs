@@ -129,11 +129,10 @@ public class Pawn : MonoBehaviour
     void CheckSquare(int distance, bool display)
     {
         RaycastHit2D hit = Physics2D.Raycast(transform.position + new Vector3(0.5f, 0.5f, 0), Vector2.up * direction, distance, LayerMask.GetMask("Piece"));
-        if (hit.collider != null)
-        {
-            Debug.Log("check " + distance + " square(s) away from " + ToChess(GetRank(), GetFile(), flipped) + ": collision with " + hit.collider.gameObject);
-        }
-        else
+
+        //if hit not null: Debug.Log("check " + distance + " square(s) away from " + ToChess(GetRank(), GetFile(), flipped) + ": collision with " + hit.collider.gameObject);
+
+        if (hit.collider == null)
         {
             Vector3Int movePosition = ToPosition(GetRank(), GetFile() + distance * direction);
             Move move = new Move(new Vector2Int(GetRank(), GetFile()),
@@ -169,7 +168,7 @@ public class Pawn : MonoBehaviour
         RaycastHit2D hit = Physics2D.Raycast(transform.position + new Vector3(0.5f, 0.5f, 0), Vector2.up * direction + lr, 1.5f, LayerMask.GetMask("Piece"));
         if (hit.collider != null)
         {
-            Debug.Log("check capture to left from " + ToChess(GetRank(), GetFile(), flipped) + ": collision with " + hit.collider.gameObject);
+            //Debug.Log("check capture to left from " + ToChess(GetRank(), GetFile(), flipped) + ": collision with " + hit.collider.gameObject);
             Pawn other = hit.collider.gameObject.GetComponent<Pawn>();
             if (other.enemy != this.enemy)
             {
@@ -321,7 +320,7 @@ public class Pawn : MonoBehaviour
 
     Vector3Int ToPosition(int rank, int file)
     {
-        return new Vector3Int(rank, file,0);
+        return new Vector3Int(rank, file, 0);
     }
 
     void OnMouseDown()

@@ -2,9 +2,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
-using System.Threading;
-using System.IO;
-
 public class PawnController : MonoBehaviour
 {
 
@@ -25,12 +22,13 @@ public class PawnController : MonoBehaviour
 
     bool gameOver = false;
 
-    bool checkSM = false;
+    bool checkSM = true;
     public int maxWaitTime;
     int waitTime;
     bool flipped = false;
 
     bool vsAI;
+    int maxTreeDepth = 3;
 
     bool isPlayerWhite;
 
@@ -40,6 +38,8 @@ public class PawnController : MonoBehaviour
     bool isWhiteTurn = true;
 
     Board board;
+
+    BoardTree tree;
 
 
     void Start()
@@ -60,6 +60,14 @@ public class PawnController : MonoBehaviour
         MakeGaps(whiteGap, blackGap);*/
 
         MakeGaps(whiteGap, blackGap);
+        if (vsAI)
+        {
+            Debug.Log("Creating tree, max depth " + maxTreeDepth);
+            this.tree = new BoardTree(new Board(whiteGap, blackGap), maxTreeDepth);
+            tree.DisplayRoot();
+        }
+
+        waitTime = maxWaitTime;
 
     }
 
@@ -79,6 +87,9 @@ public class PawnController : MonoBehaviour
                 blackGap = PlayerPrefs.GetString("blackGap")[0];
                 whiteGap = ChooseGap();
             }
+
+            maxTreeDepth = PlayerPrefs.GetInt("maxTreeDepth");
+
         }
         else
         {
@@ -92,10 +103,7 @@ public class PawnController : MonoBehaviour
     {
         //TODO: pick a better strategy
         //Random r = new Random();
-        int random = (int) Mathf.Floor(Random.Range(0, 7));
-        char gap = (char) (random + 97);
-        Debug.Log("random gap at " + gap);
-        return gap;
+        return 'h';
     }
 
     void MakeGaps(char whiteGap, char blackGap)
@@ -210,18 +218,14 @@ public class PawnController : MonoBehaviour
     {
         List<Move> moves = new List<Move>();
         Pawn[] pawns = GetComponentsInChildren<Pawn>();
-        GetPawnPositions();
+        //GetPawnPositions();
+        /*
         RaycastHit2D hit = Physics2D.Raycast(new Vector2(-2.5f,2.5f), Vector2.down, 2f);
-        Debug.Log("raycast went " + hit.distance + " units");
         if (hit.collider != null)
         {
             Pawn pawn = hit.collider.GetComponent<Pawn>();
-            Debug.Log("raycast hit pawn at " + Pawn.ToChess(pawn.GetRank(), pawn.GetFile(), pawn.isFlipped));
         } 
-        else
-        {
-            Debug.Log("what the actual heck");
-        }
+        */
         //TODO try a raycast here from b7, check position of pawn it hits, then cry
         foreach(Pawn pawn in pawns)
         {
@@ -234,6 +238,7 @@ public class PawnController : MonoBehaviour
         return moves;
     }
 
+    /*
     void GetPawnPositions()
     {
         Pawn[] pawns = GetComponentsInChildren<Pawn>();
@@ -248,6 +253,7 @@ public class PawnController : MonoBehaviour
         }
         Debug.Log(sb.ToString());
     }
+    */
 
     void OnMouseDown()
     {
@@ -262,9 +268,24 @@ public class PawnController : MonoBehaviour
 
     public void EndTurn(Move move)
     {
+        Debug.Log("Turn ended with move " + move.ToString());
         AddMove(move);
 
         if (gameOver) return;
+
+        if (vsAI)
+        {
+            if (tree == null)
+            {
+                Debug.Log("what");
+            }
+            //Debug.Log("updating tree with move " + move.ToString());
+            tree.ApplyMove(move);
+        }
+        else
+        {
+            Debug.Log("apparently you're not facing an ai");
+        }
         
         BroadcastMessage("FlipTurn");
         
@@ -274,11 +295,24 @@ public class PawnController : MonoBehaviour
 
     void ChooseMove()
     {
-        List<Move> moves = GetAllMoves();
+        /*List<Move> moves = GetAllMoves();
         int randomMove = (int) Mathf.Floor(Random.Range(0, moves.Count));
-        Move move = moves[randomMove];
+        Move move = moves[randomMove];*/
+
+        Move move = tree.SelectMove();
+
+        Debug.Log("AI selected this move: " + move.ToString());
+
+        if (flipped)
+        {
+            move = move.FlipPosition();
+        }
 
         Pawn pawn = GetPawnAt(move.from);
+        if (move.enPassant)
+        {
+            Debug.Log("AI picked en passant! move was " + move.ToString());
+        }
         pawn.MakeMove(move);
     }
 
@@ -293,7 +327,6 @@ public class PawnController : MonoBehaviour
     {
         //Debug.Log(move);
         moves.Push(move);
-        Debug.Log("move that just happened: " + move);
 
     }
 
@@ -387,63 +420,70 @@ public class PawnController : MonoBehaviour
     public void UndoMove()
     {
         if (moves.Count == 0) return;
-        Debug.Log("move made");
+        Debug.Log(moves.Count + " move(s) made");
         if (gameOver) return;
         Debug.Log("it's not over");
-        Move move = moves.Pop();
 
-        if (move.flipped != flipped)
+        for (int i = 0; i < (this.vsAI ? 2 : 1); i++) 
         {
-            move = move.FlipPosition();
-        }
-        //TODO: GetPawnAt doesn't work with a flipped board (and I assume neither does the actual moving of pawns)
-        Pawn pawn = GetPawnAt(move.to);
-        if (pawn != null)
-        {
-            //if (!source.isPlaying) //this works but also doesn't play during a capture
-            source.PlayOneShot(rewind);
-            /*if (flipped)
+            if (moves.Count == 0) continue;
+            Move move = moves.Pop();
+
+            if (move.flipped != flipped)
             {
-                pawn.transform.position = new Vector3(-1 - move.from.x, -1 - move.from.y, 0);
+                move = move.FlipPosition();
             }
-            else
-            {*/
-                pawn.transform.position = new Vector3(move.from.x, move.from.y, 0);
-            //}
-            if (move.isCapture)
+            //TODO: GetPawnAt doesn't work with a flipped board (and I assume neither does the actual moving of pawns)
+            Pawn pawn = GetPawnAt(move.to);
+            if (pawn != null)
             {
-                GameObject captured = Instantiate(pawnPrefab, transform);
-                Pawn capturedScript = captured.GetComponent<Pawn>();
-                if (!move.enPassant)
+                //if (!source.isPlaying) //this works but also doesn't play during a capture
+                source.PlayOneShot(rewind);
+                /*if (flipped)
                 {
-                    /*if (flipped)
-                    {
-                        captured.transform.position = new Vector3(-1 - move.to.x, -1 - move.to.y, 0);
-                    }
-                    else
-                    {*/
-                        captured.transform.position = new Vector3(move.to.x, move.to.y, 0);
-                    //}
-                    
+                    pawn.transform.position = new Vector3(-1 - move.from.x, -1 - move.from.y, 0);
                 }
                 else
+                {*/
+                    pawn.transform.position = new Vector3(move.from.x, move.from.y, 0);
+                //}
+                if (move.isCapture)
                 {
-                    /*if (flipped)
+                    GameObject captured = Instantiate(pawnPrefab, transform);
+                    Pawn capturedScript = captured.GetComponent<Pawn>();
+                    if (!move.enPassant)
                     {
-                        captured.transform.position = new Vector3(-1 - move.to.x, -1 - move.from.y, 0);
+                        /*if (flipped)
+                        {
+                            captured.transform.position = new Vector3(-1 - move.to.x, -1 - move.to.y, 0);
+                        }
+                        else
+                        {*/
+                            captured.transform.position = new Vector3(move.to.x, move.to.y, 0);
+                        //}
+                        
                     }
                     else
-                    {*/
-                        captured.transform.position = new Vector3(move.to.x, move.from.y, 0);
-                    //}
-                    
-                    
+                    {
+                        /*if (flipped)
+                        {
+                            captured.transform.position = new Vector3(-1 - move.to.x, -1 - move.from.y, 0);
+                        }
+                        else
+                        {*/
+                            captured.transform.position = new Vector3(move.to.x, move.from.y, 0);
+                        //}
+                        
+                        
+                    }
+                    capturedScript.UndoCapture(pawn);
+                    //idk what to do here yet
+                    AddPawn(capturedScript.enemy);
                 }
-                capturedScript.UndoCapture(pawn);
-                //idk what to do here yet
-                AddPawn(capturedScript.enemy);
+                Move grandparent = moves.Count == 0 ? null : moves.Peek();
+                tree.UndoMove(grandparent);
+                BroadcastMessage("FlipTurn");
             }
-            BroadcastMessage("FlipTurn");
         }
     }
 

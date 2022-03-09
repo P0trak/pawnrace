@@ -41,13 +41,34 @@ public class Move
         return output.ToString();
     }
 
+    public override bool Equals(object obj)
+    {
+        if (!Object.ReferenceEquals(obj.GetType(), this.GetType()))
+        {
+            return false;
+        }
+        Move other = (Move) obj;
+        if (this.flipped != other.flipped)
+        {
+            return FlipPosition().Equals(other);
+        }
+        return other.from.Equals(this.from) && other.to.Equals(this.to)
+        && other.whiteMove == this.whiteMove && other.isCapture == this.isCapture && other.enPassant == this.enPassant;
+    }
+
+    public override int GetHashCode()
+    {
+        if (flipped) return FlipPosition().GetHashCode();
+        return from.GetHashCode();
+    }
+
     public Move FlipPosition()
     {
         Move move = new Move(new Vector2Int(-1 - from.x, -1 - from.y),
                              new Vector2Int(-1 - to.x, -1 - to.y),
                              whiteMove,
                              isCapture,
-                             flipped,
+                             !flipped,
                              enPassant);
         return move;
     }

@@ -47,11 +47,13 @@ public class MoveHighlight : MonoBehaviour
         SendMessageUpwards("MakeMove", move);
     }
 
+    /*
     public void click()
     {
         Debug.Log("moving to " + transform.position);
         SendMessageUpwards("MakeMove", move);
     }
+    */
 
     void OnMouseExit()
     {

@@ -1,6 +1,6 @@
 public enum Square
 {
+    EMPTY,
     WHITE,
-    BLACK,
-    EMPTY
+    BLACK
 }
